@@ -1,7 +1,9 @@
 [project]
 name = "todo"
 version = "0.1.0"
-description = "Add your description here"
+description = "Pet project: simple todo list with cli"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "textual>=6.11.0",
+]
