@@ -73,8 +73,10 @@ def ui():
             todo_add(text, description)
         elif select == 3:
             text = input("Enter todo title: ")
+            delete_todo(text)
         elif select == 4:
             text = input("Enter todo title: ")
+            change_state(text)
         elif select == 5:
             sure = False
             answer = input("Are you sure?(yes/no)")
