@@ -21,30 +21,53 @@ def todo_update():
     with open(FILE_NAME, "w") as file:
         json.dump(todo_list, file, indent=4)
 
-def todo_add(text, description):
+def todo_add(title, description):
+    todo_load()
     today = date.today()
 
-    if text not in todo_list:
+    if len(todo_list) == 0:
         todo = {
-            text: {
+            f"{len(todo_list)}": {
+                "title": title,
+                "description": description,
+                "added date": f"{today.day}.{today.month}.{today.year}",
+                "completed": False
+            }
+        }
+    else:
+        todo = {
+            f"{str(int(list(todo_list)[-1]) + 1)}": {
+                "title": title,
                 "description": description,
                 "added date": f"{today.day}.{today.month}.{today.year}",
                 "completed": False
             }
         }
 
-        todo_list.update(todo)
-        todo_update()
+    todo_list.update(todo)
+    todo_update()
 
-def delete_todo(text):
-    if text in todo_list:
-        todo_list.pop(text)
-        todo_update()
+def delete_todo(title):
+    todo_load()
+    if title in todo_list and title.isdigit():
+        todo_list.pop(title)
+    elif not title.isdigit():
+        for k, v in todo_list.items():
+            if v["title"].lower() == title.lower():
+                todo_list.pop(k)
+                break
+    todo_update()
 
-def change_state(text):
-    if text in todo_list:
-        todo_list[text]["completed"] = not todo_list[text]["completed"]
-        todo_update()
+def change_state(title):
+    todo_load()
+    if title in todo_list and title.isdigit():
+        todo_list[title]["completed"] = not todo_list[title]["completed"]
+    elif not title.isdigit():
+        for v in todo_list.values():
+            if v["title"].lower() == title.lower():
+                v["completed"] = not v["completed"]
+                break
+    todo_update()
 
 def list_todo():
     todo_load()
@@ -67,16 +90,20 @@ def ui():
     while 1 <= select and 5 >= select:
         if select == 1:
             print(list_todo())
+
         elif select == 2:
-            text = input("Enter todo title: ")
+            title = input("Enter todo title: ")
             description = input("Enter todo description: ")
-            todo_add(text, description)
+            todo_add(title, description)
+
         elif select == 3:
-            text = input("Enter todo title: ")
-            delete_todo(text)
+            title = input("Enter todo title: ")
+            delete_todo(title)
+
         elif select == 4:
-            text = input("Enter todo title: ")
-            change_state(text)
+            title = input("Enter todo title: ")
+            change_state(title)
+
         elif select == 5:
             sure = False
             answer = input("Are you sure?(yes/no)")
@@ -90,7 +117,7 @@ def ui():
         select = int(input())
 
 def main():
-    while 1:
+    while True:
         ui()
 
 if __name__ == "__main__":
