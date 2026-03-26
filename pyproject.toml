@@ -5,7 +5,10 @@ description = "Pet project: simple todo list with cli"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiogram>=3.26.0",
+    "dotenv>=0.9.9",
     "httpx>=0.28.1",
+    "python-dotenv>=1.2.2",
     "rich>=14.2.0",
     "textual>=6.11.0",
 ]
