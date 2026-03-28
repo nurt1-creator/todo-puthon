@@ -12,6 +12,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
+    FSInputFile,
 )
 
 from logic import TodoManager
@@ -44,6 +45,12 @@ class Keyboards:
         [InlineKeyboardButton(text="Add task", callback_data="add_button")],
         [InlineKeyboardButton(text="Delete task", callback_data="delete_button")],
         [InlineKeyboardButton(text="Change status", callback_data="toggle_button")],
+        [InlineKeyboardButton(text="Delete all task", callback_data="delete_all_button")],
+    ])
+
+    ACCEPT = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Yes", callback_data="yes_button"),
+        InlineKeyboardButton(text="No", callback_data="no_button"),]
     ])
 
     BACK = InlineKeyboardMarkup(inline_keyboard=[
@@ -84,6 +91,15 @@ class TodoBot:
         self.dp.callback_query.register(
             self.cb_toggle, lambda c: c.data == "toggle_button"
         )
+        self.dp.callback_query.register(
+            self.cb_delete_all, lambda c: c.data == "delete_all_button"
+        )
+        self.dp.callback_query.register(
+            self.cb_accept_yes, lambda c: c.data == "yes_button"
+        )
+        self.dp.callback_query.register(
+            self.cb_accept_no, lambda c: c.data == "no_button"
+        )
 
         self.dp.message.register(self.fsm_add_title, AddTaskState.waiting_for_title)
         self.dp.message.register(self.fsm_add_desc, AddTaskState.waiting_for_desc)
@@ -98,6 +114,13 @@ class TodoBot:
             f"{k}: {v['title']} — {'✅' if v['completed'] else '❌'}"
             for k, v in data.items()
         )
+
+    async def _safe_edit(self, message, text: str, reply_markup=None):
+        try:
+            await message.edit_text(text, reply_markup=reply_markup)
+        except Exception:
+            await message.delete()
+            await message.answer(text, reply_markup=reply_markup)
 
     # --- Commands ---
 
@@ -157,34 +180,58 @@ class TodoBot:
     # --- Callbacks ---
 
     async def cb_show_menu(self, callback: CallbackQuery):
+        photo = "AgACAgIAAxkDAAPDacbHXn8n2cW6MIr95d4GmbqvTj8AAsYaaxsv7ThKA8s7qWBVuqkBAAMCAAN5AAM6BA"
+
         await callback.answer()
-        await callback.message.edit_text("Menu", reply_markup=Keyboards.MENU)
+        await callback.message.delete()
+        await callback.message.answer_photo(photo=photo, caption="Todo bot menu", reply_markup=Keyboards.MENU)
+        # await callback.message.edit_text("Todo menu", reply_markup=Keyboards.MENU)
 
     async def cb_task_list(self, callback: CallbackQuery):
         await callback.answer()
         text = self._format_task_list()
-        await callback.message.edit_text(
-            text or "No tasks", reply_markup=Keyboards.BACK
-        )
+        await self._safe_edit(callback.message, text or "No tasks", Keyboards.BACK)
 
-    async def cb_back(self, callback: CallbackQuery):
+    async def cb_back(self, callback: CallbackQuery, state: FSMContext):
         await callback.answer()
-        await callback.message.edit_text("Menu", reply_markup=Keyboards.MENU)
+        await state.clear()
+        await self.cb_show_menu(callback=callback)
 
     async def cb_add(self, callback: CallbackQuery, state: FSMContext):
         await callback.answer()
-        await callback.message.answer("Enter task title:")
+        await self._safe_edit(callback.message, "Enter task title:", reply_markup=Keyboards.BACK)
         await state.set_state(AddTaskState.waiting_for_title)
 
     async def cb_delete(self, callback: CallbackQuery, state: FSMContext):
         await callback.answer()
-        await callback.message.answer("Enter task title to delete:")
+        await self._safe_edit(callback.message, "Enter task title to delete:", reply_markup=Keyboards.BACK)
         await state.set_state(DeleteTaskState.waiting_for_title)
 
     async def cb_toggle(self, callback: CallbackQuery, state: FSMContext):
         await callback.answer()
-        await callback.message.answer("Enter task title to toggle:")
+        await self._safe_edit(callback.message, "Enter task title to toggle:", reply_markup=Keyboards.BACK)
         await state.set_state(ToggleTaskState.waiting_for_title)
+
+    async def cb_delete_all(self, callback: CallbackQuery):
+        await callback.answer()
+        await self._safe_edit(callback.message, "Are you sure?", reply_markup=Keyboards.ACCEPT)
+
+    async def cb_accept_yes(self, callback: CallbackQuery):
+        await callback.answer()
+        self.tm.clear()
+        self.tm.save()
+        await callback.message.delete()
+
+        photo = "AgACAgIAAxkDAAIBBGnHhicrcxXhegVBTdtcB7IbLP_2AAL2EmsbL-1ASiK7GTMQA-qlAQADAgADeQADOgQ"
+        await callback.message.answer_photo(photo=photo, caption="All tasks deleted ✅")
+
+        # file_id = msg.photo[-1].file_id
+        # print(file_id)
+
+    async def cb_accept_no(self, callback: CallbackQuery):
+        await callback.answer()
+        await self.cb_show_menu(callback=callback)
+
 
     # --- FSM handlers ---
 
